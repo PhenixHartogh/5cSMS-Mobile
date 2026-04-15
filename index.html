@@ -1,15 +1,18 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SMS Sender</title>
+<title>5c SMS Mobile</title>
+
 <style>
+
 :root{
 --bg:#f2f2f7;
 --card:#ffffff;
 --text:#111;
---sub:#666;
+--sub:#6e6e73;
 --accent:#007aff;
 }
 
@@ -17,7 +20,7 @@ body.dark{
 --bg:#000;
 --card:#1c1c1e;
 --text:#fff;
---sub:#aaa;
+--sub:#9a9a9f;
 --accent:#0a84ff;
 }
 
@@ -37,7 +40,12 @@ padding:16px;
 .header{
 font-size:28px;
 font-weight:700;
-margin-bottom:10px;
+margin-bottom:16px;
+}
+
+.toggle{
+float:right;
+cursor:pointer;
 }
 
 .card{
@@ -65,7 +73,10 @@ background:var(--card);
 color:var(--text);
 }
 
-textarea{height:120px;resize:none;}
+textarea{
+height:120px;
+resize:none;
+}
 
 button{
 width:100%;
@@ -78,7 +89,10 @@ font-size:16px;
 font-weight:600;
 }
 
-.row{display:flex;gap:10px}
+.row{
+display:flex;
+gap:10px;
+}
 
 .smallbtn{
 flex:1;
@@ -95,7 +109,9 @@ font-size:14px;
 cursor:pointer;
 }
 
-body.dark .template{background:#2c2c2e}
+body.dark .template{
+background:#2c2c2e;
+}
 
 .history-item{
 font-size:13px;
@@ -111,69 +127,91 @@ margin-top:-8px;
 margin-bottom:8px;
 }
 
-.toggle{
-float:right;
-font-size:14px;
-cursor:pointer;
-}
 </style>
+
 </head>
+
 <body>
 
 <div class="container">
 
-<div class="header">SMS Sender <span class="toggle" onclick="toggleDark()">🌙</span></div>
-
-<div class="card">
-<h3>API Settings</h3>
-<label>API Key ID</label>
-<input id="keyId">
-<label>API Key Secret</label>
-<input id="keySecret">
-<button onclick="saveKeys()">Save Keys</button>
+<div class="header">
+5c SMS Mobile
+<span class="toggle" onclick="toggleDark()">🌙</span>
 </div>
 
 <div class="card">
+
+<h3>API Settings</h3>
+
+<label>API Key ID</label> <input id="keyId">
+
+<label>API Key Secret</label> <input id="keySecret">
+
+<button onclick="saveKeys()">Save Keys</button>
+
+</div>
+
+<div class="card">
+
 <h3>Sender Presets</h3>
+
 <input id="presetInput" placeholder="Add sender ID">
+
 <div class="row">
 <button class="smallbtn" onclick="addPreset()">Add</button>
 <button class="smallbtn" onclick="clearPresets()">Clear</button>
 </div>
+
 <select id="presetList" onchange="applyPreset()"></select>
+
 </div>
 
 <div class="card">
-<h3>Send SMS</h3>
-<label>Sender</label>
-<input id="sender">
 
-<label>Recipient</label>
-<input id="to" placeholder="61412345678">
+<h3>Send SMS</h3>
+
+<label>Sender</label> <input id="sender">
+
+<label>Recipient</label> <input id="to" placeholder="61412345678">
 
 <label>Message</label>
+
 <textarea id="message" oninput="updateCounter()"></textarea>
+
 <div class="counter" id="counter">0 / 160</div>
 
 <button onclick="sendSMS()">Send SMS</button>
+
 <div id="status"></div>
+
 </div>
 
 <div class="card">
+
 <h3>Templates</h3>
+
 <div id="templates"></div>
+
 <input id="templateInput" placeholder="New template">
+
 <button onclick="addTemplate()">Save Template</button>
+
 </div>
 
 <div class="card">
+
 <h3>Recent Messages</h3>
+
 <div id="history"></div>
+
 </div>
 
 </div>
 
 <script>
+
+let sending=false
 
 window.onload = () => {
 
@@ -184,47 +222,59 @@ loadTemplates()
 loadPresets()
 loadHistory()
 
-if(localStorage.getItem("darkmode") === "true"){
+if(localStorage.getItem("darkmode")==="true"){
 document.body.classList.add("dark")
 }
 
 }
 
+
 function toggleDark(){
+
 const enabled = document.body.classList.toggle("dark")
-localStorage.setItem("darkmode", enabled)
+localStorage.setItem("darkmode",enabled)
+
 }
 
+
 function saveKeys(){
-localStorage.setItem("sms_key_id", keyId.value)
-localStorage.setItem("sms_key_secret", keySecret.value)
+
+localStorage.setItem("sms_key_id",keyId.value)
+localStorage.setItem("sms_key_secret",keySecret.value)
+
 alert("Saved locally")
+
 }
+
 
 async function sendSMS(){
 
-const body = {
-"key-secret": localStorage.getItem("sms_key_secret"),
-"key-id": localStorage.getItem("sms_key_id"),
-"sender": sender.value,
-"to": to.value,
-"message": message.value
+if(sending) return
+sending=true
+
+const body={
+"key-secret":localStorage.getItem("sms_key_secret"),
+"key-id":localStorage.getItem("sms_key_id"),
+"sender":sender.value,
+"to":to.value,
+"message":message.value
 }
 
 status.innerText="Sending..."
 
 try{
 
-const res = await fetch("https://www.5centsms.com.au/api/v5/sms",{
+const res=await fetch("send.php",{
 method:"POST",
-headers:{"Content-Type":"application/json"},
+headers:{ "Content-Type":"application/json" },
 body:JSON.stringify(body)
 })
 
-const data = await res.json()
+const data=await res.json()
 
 if(data.error){
 status.innerText=data.error
+sending=false
 return
 }
 
@@ -233,41 +283,60 @@ status.innerText=data.messages[0].status_text
 saveHistory()
 
 }catch(e){
+
 status.innerText="Network error"
-}
 
 }
+
+sending=false
+
+}
+
 
 function updateCounter(){
-const len = message.value.length
-counter.innerText = len + " / 160"
+
+const len=message.value.length
+counter.innerText=len+" / 160"
+
 }
 
 
 function addTemplate(){
 
-const list = JSON.parse(localStorage.getItem("templates")||"[]")
+const list=JSON.parse(localStorage.getItem("templates")||"[]")
+
 list.push(templateInput.value)
-localStorage.setItem("templates", JSON.stringify(list))
+
+localStorage.setItem("templates",JSON.stringify(list))
 
 templateInput.value=""
+
 loadTemplates()
 
 }
 
+
 function loadTemplates(){
 
-const list = JSON.parse(localStorage.getItem("templates")||"[]")
+const list=JSON.parse(localStorage.getItem("templates")||"[]")
 
-const div = document.getElementById("templates")
+const div=document.getElementById("templates")
+
 div.innerHTML=""
 
 list.forEach(t=>{
 
 const el=document.createElement("div")
+
 el.className="template"
 el.innerText=t
-el.onclick=()=>{message.value=t;updateCounter()}
+
+el.onclick=()=>{
+
+message.value=t
+updateCounter()
+
+}
 
 div.appendChild(el)
 
@@ -275,45 +344,60 @@ div.appendChild(el)
 
 }
 
+
 function addPreset(){
 
-const list = JSON.parse(localStorage.getItem("presets")||"[]")
+const list=JSON.parse(localStorage.getItem("presets")||"[]")
+
 list.push(presetInput.value)
-localStorage.setItem("presets", JSON.stringify(list))
+
+localStorage.setItem("presets",JSON.stringify(list))
 
 presetInput.value=""
+
 loadPresets()
 
 }
+
 
 function clearPresets(){
+
 localStorage.removeItem("presets")
 loadPresets()
+
 }
+
 
 function loadPresets(){
 
-const list = JSON.parse(localStorage.getItem("presets")||"[]")
+const list=JSON.parse(localStorage.getItem("presets")||"[]")
 
 presetList.innerHTML=""
 
 list.forEach(p=>{
+
 const opt=document.createElement("option")
+
 opt.text=p
 opt.value=p
+
 presetList.appendChild(opt)
+
 })
 
 }
 
+
 function applyPreset(){
+
 sender.value=presetList.value
+
 }
 
 
 function saveHistory(){
 
-const list = JSON.parse(localStorage.getItem("history")||"[]")
+const list=JSON.parse(localStorage.getItem("history")||"[]")
 
 list.unshift({
 number:to.value,
@@ -321,25 +405,30 @@ message:message.value,
 time:new Date().toLocaleString()
 })
 
-localStorage.setItem("history", JSON.stringify(list.slice(0,20)))
+localStorage.setItem("history",JSON.stringify(list.slice(0,20)))
 
 loadHistory()
 
 }
 
+
 function loadHistory(){
 
-const list = JSON.parse(localStorage.getItem("history")||"[]")
+const list=JSON.parse(localStorage.getItem("history")||"[]")
 
-history.innerHTML=""
+const historyDiv=document.getElementById("history")
+
+historyDiv.innerHTML=""
 
 list.forEach(h=>{
 
 const el=document.createElement("div")
-el.className="history-item"
-el.innerText = h.time + " → " + h.number + " : " + h.message
 
-history.appendChild(el)
+el.className="history-item"
+
+el.innerText=h.time+" → "+h.number+" : "+h.message
+
+historyDiv.appendChild(el)
 
 })
 
