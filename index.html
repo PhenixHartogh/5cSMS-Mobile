@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMS Sender</title>
+<style>
+:root{
+--bg:#f2f2f7;
+--card:#ffffff;
+--text:#111;
+--sub:#666;
+--accent:#007aff;
+}
+
+body.dark{
+--bg:#000;
+--card:#1c1c1e;
+--text:#fff;
+--sub:#aaa;
+--accent:#0a84ff;
+}
+
+body{
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial;
+background:var(--bg);
+color:var(--text);
+}
+
+.container{
+max-width:520px;
+margin:auto;
+padding:16px;
+}
+
+.header{
+font-size:28px;
+font-weight:700;
+margin-bottom:10px;
+}
+
+.card{
+background:var(--card);
+border-radius:18px;
+padding:16px;
+margin-bottom:14px;
+box-shadow:0 6px 20px rgba(0,0,0,0.08);
+}
+
+label{
+font-size:13px;
+color:var(--sub);
+}
+
+input, textarea, select{
+width:100%;
+padding:12px;
+border-radius:10px;
+border:1px solid #ddd;
+margin-top:6px;
+margin-bottom:12px;
+font-size:16px;
+background:var(--card);
+color:var(--text);
+}
+
+textarea{height:120px;resize:none;}
+
+button{
+width:100%;
+padding:14px;
+border:none;
+border-radius:12px;
+background:var(--accent);
+color:white;
+font-size:16px;
+font-weight:600;
+}
+
+.row{display:flex;gap:10px}
+
+.smallbtn{
+flex:1;
+font-size:14px;
+padding:10px;
+}
+
+.template{
+padding:8px;
+border-radius:8px;
+background:#eee;
+margin-bottom:6px;
+font-size:14px;
+cursor:pointer;
+}
+
+body.dark .template{background:#2c2c2e}
+
+.history-item{
+font-size:13px;
+border-bottom:1px solid #eee;
+padding:6px 0;
+}
+
+.counter{
+font-size:12px;
+color:var(--sub);
+text-align:right;
+margin-top:-8px;
+margin-bottom:8px;
+}
+
+.toggle{
+float:right;
+font-size:14px;
+cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="header">SMS Sender <span class="toggle" onclick="toggleDark()">🌙</span></div>
+
+<div class="card">
+<h3>API Settings</h3>
+<label>API Key ID</label>
+<input id="keyId">
+<label>API Key Secret</label>
+<input id="keySecret">
+<button onclick="saveKeys()">Save Keys</button>
+</div>
+
+<div class="card">
+<h3>Sender Presets</h3>
+<input id="presetInput" placeholder="Add sender ID">
+<div class="row">
+<button class="smallbtn" onclick="addPreset()">Add</button>
+<button class="smallbtn" onclick="clearPresets()">Clear</button>
+</div>
+<select id="presetList" onchange="applyPreset()"></select>
+</div>
+
+<div class="card">
+<h3>Send SMS</h3>
+<label>Sender</label>
+<input id="sender">
+
+<label>Recipient</label>
+<input id="to" placeholder="61412345678">
+
+<label>Message</label>
+<textarea id="message" oninput="updateCounter()"></textarea>
+<div class="counter" id="counter">0 / 160</div>
+
+<button onclick="sendSMS()">Send SMS</button>
+<div id="status"></div>
+</div>
+
+<div class="card">
+<h3>Templates</h3>
+<div id="templates"></div>
+<input id="templateInput" placeholder="New template">
+<button onclick="addTemplate()">Save Template</button>
+</div>
+
+<div class="card">
+<h3>Recent Messages</h3>
+<div id="history"></div>
+</div>
+
+</div>
+
+<script>
+
+window.onload = () => {
+
+keyId.value = localStorage.getItem("sms_key_id") || ""
+keySecret.value = localStorage.getItem("sms_key_secret") || ""
+
+loadTemplates()
+loadPresets()
+loadHistory()
+
+if(localStorage.getItem("darkmode") === "true"){
+document.body.classList.add("dark")
+}
+
+}
+
+function toggleDark(){
+const enabled = document.body.classList.toggle("dark")
+localStorage.setItem("darkmode", enabled)
+}
+
+function saveKeys(){
+localStorage.setItem("sms_key_id", keyId.value)
+localStorage.setItem("sms_key_secret", keySecret.value)
+alert("Saved locally")
+}
+
+async function sendSMS(){
+
+const body = {
+"key-secret": localStorage.getItem("sms_key_secret"),
+"key-id": localStorage.getItem("sms_key_id"),
+"sender": sender.value,
+"to": to.value,
+"message": message.value
+}
+
+status.innerText="Sending..."
+
+try{
+
+const res = await fetch("https://www.5centsms.com.au/api/v5/sms",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(body)
+})
+
+const data = await res.json()
+
+if(data.error){
+status.innerText=data.error
+return
+}
+
+status.innerText=data.messages[0].status_text
+
+saveHistory()
+
+}catch(e){
+status.innerText="Network error"
+}
+
+}
+
+function updateCounter(){
+const len = message.value.length
+counter.innerText = len + " / 160"
+}
+
+
+function addTemplate(){
+
+const list = JSON.parse(localStorage.getItem("templates")||"[]")
+list.push(templateInput.value)
+localStorage.setItem("templates", JSON.stringify(list))
+
+templateInput.value=""
+loadTemplates()
+
+}
+
+function loadTemplates(){
+
+const list = JSON.parse(localStorage.getItem("templates")||"[]")
+
+const div = document.getElementById("templates")
+div.innerHTML=""
+
+list.forEach(t=>{
+
+const el=document.createElement("div")
+el.className="template"
+el.innerText=t
+el.onclick=()=>{message.value=t;updateCounter()}
+
+div.appendChild(el)
+
+})
+
+}
+
+function addPreset(){
+
+const list = JSON.parse(localStorage.getItem("presets")||"[]")
+list.push(presetInput.value)
+localStorage.setItem("presets", JSON.stringify(list))
+
+presetInput.value=""
+loadPresets()
+
+}
+
+function clearPresets(){
+localStorage.removeItem("presets")
+loadPresets()
+}
+
+function loadPresets(){
+
+const list = JSON.parse(localStorage.getItem("presets")||"[]")
+
+presetList.innerHTML=""
+
+list.forEach(p=>{
+const opt=document.createElement("option")
+opt.text=p
+opt.value=p
+presetList.appendChild(opt)
+})
+
+}
+
+function applyPreset(){
+sender.value=presetList.value
+}
+
+
+function saveHistory(){
+
+const list = JSON.parse(localStorage.getItem("history")||"[]")
+
+list.unshift({
+number:to.value,
+message:message.value,
+time:new Date().toLocaleString()
+})
+
+localStorage.setItem("history", JSON.stringify(list.slice(0,20)))
+
+loadHistory()
+
+}
+
+function loadHistory(){
+
+const list = JSON.parse(localStorage.getItem("history")||"[]")
+
+history.innerHTML=""
+
+list.forEach(h=>{
+
+const el=document.createElement("div")
+el.className="history-item"
+el.innerText = h.time + " → " + h.number + " : " + h.message
+
+history.appendChild(el)
+
+})
+
+}
+
+</script>
+
+</body>
+</html>
